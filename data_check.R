@@ -17,3 +17,8 @@ daily <- read_tsv('/cloud/project/raw/daily_ghosttown.tsv')  %>%
 separate(daily, "DATE_KEY", c("Year", "Month", "Day"), sep = "-") %>%
   filter(Month == '03') %>%
   summarise(n = sum(as.numeric(TOTAL_STREAMS)))
+
+## chart tops
+charts <- read_tsv('/cloud/project/raw/test.tsv')
+min(charts$DATE_KEY)
+max(charts$DATE_KEY)
