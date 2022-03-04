@@ -1,6 +1,5 @@
 ## check the datasets
 
-
 month <- read_tsv('/cloud/project/raw/monthly_ghosttown.tsv') %>%
   filter(COUNTRY_CODE == "US") %>%
   filter(MAJOR_GENRE_DESC == "Pop")
