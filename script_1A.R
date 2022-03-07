@@ -23,6 +23,8 @@ p
 ## check residuals
 acf(pass.ts)
 checkresiduals(pass.ts)
+
+
 ## forecast new points
 library(forecast)
 rev_forecast <- forecast(pass.ts,7)
@@ -31,7 +33,6 @@ rev_forecast <- forecast(pass.ts,3)
 plot(forecast(pass.ts,3))
 
 ### additive decomposition model
-
 #build a numeric value
 small<- ddply(small, .(COUNTRY_CODE), mutate, id = order(DATE_KEY))
 small$time <- as.numeric(small$id)
@@ -43,6 +44,11 @@ model1<- lm(small[,6]~time+I(time^2)+I(time^3)+I(time^4));summary(model1)
 ## examine residuals
 plot(ts(resid(model1),start=c(2021,1,11),freq=12),xlab="time",
      ylab="residu als",main="Residuals of Model 1")
+acf(resid(model1))
+
+head(predict(model1), n = 10)
+
+
 ### spectral density, we might want the seasonality of the music
 ### industry here, is there a time of the year when it peaks
 ### add more here
@@ -61,7 +67,10 @@ anova(model2,model1)
 
 ## seasonal indices are not of interest
 
-#adding in country
+### multiplicative decomposition model
+
+
+#adding in country as an interaction variable
 small <- df %>%
   filter(COUNTRY_CODE %in% c("US", "GB"))
 small <- small %>%
@@ -78,9 +87,25 @@ model1<- lm(TOTAL_STREAMS~time+I(time^2)+I(time^3)+I(time^4)+
 
 
 ### distributed lag
-
-
-
+test <- small %>%
+  select(TOTAL_STREAMS, COUNTRY_CODE, DATE_KEY) %>%
+  group_by_at(vars(-TOTAL_STREAMS)) %>%
+  dplyr::mutate(row_id = 1:n()) %>%
+  ungroup() %>%
+  spread(key = COUNTRY_CODE, value = TOTAL_STREAMS)
+test[is.na(test)] = 0
+test<- as.data.frame(test)
+plot(ts(test[,3]), ylab = "Streams", main = "Ghost Town Weekly Streams", ylim = c(0,2369275),
+     lty = 1, lwd = 2, col = "red")
+lines(ts(test[4]), lty = 2, lwd = 2, col = "blue")
+legend("bottomright", legend = c("US streams", "GB streams"),
+       col = c("blue", "red"), lty = 1, cex = 1,
+       pt.cex = 6, pch = 20)
+##
+model1 <- lm(GB~US, data = test)
+summary(model1)
+test$DATE_KEY
+head(predict(model1), DATE = "2022-03-03")
 
 
 

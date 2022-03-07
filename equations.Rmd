@@ -1,0 +1,25 @@
+---
+title: "equations"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Additive Decomposition Model
+
+$$
+streams_t = \beta_0 + \beta_1{t} + \beta_2{t^2} + \beta_3{t^3}  + \beta_4{t^4}  + \epsilon _t
+$$
+
+
+
+## Distributed Lag
+
+$$
+GBstreams_t = \alpha +\beta{USstreams_t} + \epsilon_t
+$$
