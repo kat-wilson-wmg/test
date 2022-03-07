@@ -21,7 +21,9 @@ small <- df %>%
   filter(COUNTRY_CODE == "US") %>%
   filter(MAJOR_GENRE_DESC == "Pop")
 small_sep <- separate(small, "DATE_KEY", c("Year", "Month", "Day"), sep = "-")
-# ts way 2 incorrect
+# ts way 2 (arrange by DATE key first)
+small <- small %>%
+  arrange(DATE_KEY)
 streams.ts <- ts(small[,6], start = c(2021,1,1), freq = 5)
 plot(streams.ts)
 ## ggplot way
@@ -51,11 +53,10 @@ small_sep <- separate(small, "DATE_KEY", c("Year", "Month", "Day"), sep = "-")
 
 # ts way 1
 attach(small)
-pass.ts <- ts(TOTAL_STREAMS, start = c(2021,10), freq = 12)
+small <- small %>%
+  arrange(DATE_KEY)
+pass.ts <- ts(small[6], start = c(2021,10), freq = 12)
 plot(pass.ts, ylab = "streams", main = "weekly streams")
-## ts way 2
-stream.ts <- ts(small[8], start = c(2021,1,1), freq = 5)
-plot(stream.ts)
 ## ggplot way
 p <- ggplot(small, aes(x=DATE_KEY, y=TOTAL_STREAMS)) +
   geom_line() + 
@@ -92,13 +93,11 @@ small <- df %>%
 # small <- separate(small, "DATE_KEY", c("Year", "Month", "Day"), sep = "-")
 # ts way 1
 attach(small)
-stream.ts <- ts(TOTAL_STREAMS , start = c(2021, as.numeric(format(small$DATE_KEY[1], "%j"))),
+small <- small %>%
+  arrange(DATE_KEY)
+stream.ts <- ts(small[6] , start = c(2021, as.numeric(format(small$DATE_KEY[1], "%j"))),
                 frequency = 365)
 plot(stream.ts, ylab = "streams", main = "daily streams")
-## ts way 2
-stream.ts <- ts(small[6], start = c(2021, as.numeric(format(small$DATE_KEY[1], "%j"))),
-                frequency = 365)
-plot(stream.ts)
 ## ggplot way
 p <- ggplot(small, aes(x=DATE_KEY, y=TOTAL_STREAMS)) +
   geom_line() + 
@@ -114,10 +113,8 @@ p
 df <- read_tsv('/cloud/project/raw/weekly_ghosttown.tsv')
 small <- df %>%
   filter(COUNTRY_CODE %in% c("US", "GB", "RS")) %>%
-  filter(MAJOR_GENRE_DESC == "Pop")
-small_sep <- separate(small, "DATE_KEY", c("Year", "Month", "Day"), sep = "-")
-pass.ts <- ts(small[6])
-plot(pass.ts, ylab = "streams", main = "weekly streams", xlim = c(0,20))
+  filter(MAJOR_GENRE_DESC == "Pop") %>%
+  arrange(DATE_KEY)
 ## ggplot way
 p <- ggplot(small, aes(x=DATE_KEY, y=TOTAL_STREAMS,
                        col = COUNTRY_CODE)) +
