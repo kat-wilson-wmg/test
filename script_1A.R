@@ -19,6 +19,10 @@ p <- ggplot(small, aes(x=DATE_KEY, y=TOTAL_STREAMS)) +
                date_breaks = "month")
 p
 
+new<- ddply(small, .(COUNTRY_CODE), mutate, id = order(DATE_KEY)) %>%
+   select(id, TOTAL_STREAMS)
+
+
 ### on the basic pass.ts
 ## check residuals
 acf(pass.ts)
@@ -66,13 +70,14 @@ model2<- lm(small[,6]~time+I(time^2)+I(time^3))
 anova(model2,model1)
 
 ## seasonal indices are not of interest
-
 ### multiplicative decomposition model
 
 
 #adding in country as an interaction variable
+table(df$COUNTRY_CODE)
 small <- df %>%
-  filter(COUNTRY_CODE %in% c("US", "GB"))
+  filter(COUNTRY_CODE %in% c("US", "GB", "NZ", "CH", "RU", "BZ", "CA"))
+table(df$COUNTRY_CODE)
 small <- small %>%
   arrange(DATE_KEY)
 pass.ts <- ts(small[6], start = c(2021,10), freq = 12)
@@ -80,13 +85,12 @@ plot(pass.ts, ylab = "streams", main = "weekly streams")
 small<- ddply(small, .(COUNTRY_CODE), mutate, id = order(DATE_KEY))
 small$time <- as.numeric(small$id)
 attach(small)
+### you can see which markets are predictive of total streams (going to be the big markets
+## like china, GB, US)
 model1<- lm(TOTAL_STREAMS~time+I(time^2)+I(time^3)+I(time^4)+
               COUNTRY_CODE);summary(model1)
 
-### multiplicative models
-
-
-### distributed lag
+### distributed lag sample (with countries)
 test <- small %>%
   select(TOTAL_STREAMS, COUNTRY_CODE, DATE_KEY) %>%
   group_by_at(vars(-TOTAL_STREAMS)) %>%
@@ -98,14 +102,27 @@ test<- as.data.frame(test)
 plot(ts(test[,3]), ylab = "Streams", main = "Ghost Town Weekly Streams", ylim = c(0,2369275),
      lty = 1, lwd = 2, col = "red")
 lines(ts(test[4]), lty = 2, lwd = 2, col = "blue")
-legend("bottomright", legend = c("US streams", "GB streams"),
-       col = c("blue", "red"), lty = 1, cex = 1,
+lines(ts(test[5]), lty = 2, lwd = 2, col = "green")
+legend("bottomright", legend = c("GB streams", "NZ streams", "US streams"),
+       col = c("red", "blue", "green"), lty = 1, cex = 1,
        pt.cex = 6, pch = 20)
 ##
-model1 <- lm(GB~US, data = test)
+#### NZ popularity is predictive of Great Britian
+new<- ddply(test, mutate, id = order(DATE_KEY)) %>%
+   select(id, TOTAL_STREAMS)
+class(new$id)
+model1 <- lm(GB ~ US + NZ + RU + CA + CH, data = test)
+## US and CH predictive of Canada
+model1 <- lm(CA ~ GB + NZ + RU + US + CH, data = test)
 summary(model1)
+acf(model1)
 test$DATE_KEY
 head(predict(model1), DATE = "2022-03-03")
+
+### autoregressive model
+?arima
+
+
 
 
 
