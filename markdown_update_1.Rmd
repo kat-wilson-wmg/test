@@ -1,5 +1,5 @@
 ---
-title: "update_3.10"
+title: "KJW update_3.10"
 output:
   pdf_document: default
   html_document: default
@@ -10,14 +10,17 @@ date: '2022-03-10'
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Data Overivew
+## Overview
 
-The data is DV of stream counts for Ofenbach HSKT
+This is a sample analysis on Ofenbach's HSKT stream count over multiple countries. I focus on Stream Count now because Chart Ranking is too conflated with other factors. I am using this song because we have some apriori knoweldge about it. Since it is a dance song, then it peaks in XYZ countries first. I would like to re-create this with two other songs where we know what the pattern is "supposed to be". Do we have another song that we already know peaks in a certain country first? Do we have a song that we know lags far behind other countries? Doesn't have to be a song. An artist, or a genre? For a specific country, or whole territory would do.
 
-```{r }
+## Step 1: Data Overivew
+
+I re-shape data of weekly Ofenbach HSKT streams, so each row is a date. Each column is the weekly streams, by country. Sample of the data frame:
+
+```{r message=FALSE, warning=FALSE}
 library(tidyverse)
 charts <- read_tsv('/cloud/project/raw/weekly_ghosttown.tsv')
-table(charts$COUNTRY_CODE)
 charts_total <- charts %>%
   filter(COUNTRY_CODE %in% c("FR", "US", "GB", "PT")) %>%
   select(COUNTRY_CODE, TOTAL_STREAMS, DATE_KEY)
@@ -29,9 +32,47 @@ test <- charts_total %>%
   ungroup() %>%
   spread(key = COUNTRY_CODE, value = TOTAL_STREAMS)
 test[is.na(test)] = 0
+head(test)
 ```
 
-## Pairwise Country Visualizations
+## Step 2: Pairwise Country Visualizations
+
+For each pair of countries, visualize the arc of stream count. You can see here that PT peaks after 
+
+```{r message=FALSE, warning=FALSE}
+
+p <- ggplot(charts_total, aes(x=DATE_KEY, y=as.numeric(TOTAL_STREAMS),
+                        col = as.factor(COUNTRY_CODE))) +
+  geom_line() + 
+  xlab("") +
+  scale_x_date(date_labels = "%Y-%m-%d") +
+  labs(title = "Ghost Town Spotify 200 Chart progression") +
+  theme(axis.text.x=element_text(angle=60, hjust=1)) 
+p
+
+## one way
+library(GGally)
+pairdat<- test[,3:6]
+ggpairs(test[,3:6])
+
+## another way
+lowerFn <- function(data, mapping, method = "lm", ...) {
+  p <- ggplot(data = pairdat, mapping = mapping) +
+    geom_point(colour = "blue") +
+    geom_smooth(method = method, color = "red", ...)
+  p
+}
+
+ggpairs(test[,3:6], lower = list(continuous = wrap(lowerFn, method = "lm")),
+  diag = list(continuous = wrap("barDiag", colour = "blue")),
+  upper = list(continuous = wrap("cor", size = 10))
+)
+
+```
+
+
+
+## Step 3: Pairwise Country Covariance and Autocorrelation Charts
 
 ### Covariance/Correlation of the Stream
 
