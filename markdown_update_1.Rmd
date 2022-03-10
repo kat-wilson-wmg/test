@@ -1,0 +1,92 @@
+---
+title: "update_3.10"
+output:
+  pdf_document: default
+  html_document: default
+date: '2022-03-10'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Data Overivew
+
+The data is DV of stream counts for Ofenbach HSKT
+
+```{r }
+library(tidyverse)
+charts <- read_tsv('/cloud/project/raw/weekly_ghosttown.tsv')
+table(charts$COUNTRY_CODE)
+charts_total <- charts %>%
+  filter(COUNTRY_CODE %in% c("FR", "US", "GB", "PT")) %>%
+  select(COUNTRY_CODE, TOTAL_STREAMS, DATE_KEY)
+## Step 1A: reshape
+test <- charts_total %>%
+  select(TOTAL_STREAMS, COUNTRY_CODE, DATE_KEY) %>%
+  group_by_at(vars(-TOTAL_STREAMS)) %>%
+  dplyr::mutate(row_id = 1:n()) %>%
+  ungroup() %>%
+  spread(key = COUNTRY_CODE, value = TOTAL_STREAMS)
+test[is.na(test)] = 0
+```
+
+## Pairwise Country Visualizations
+
+### Covariance/Correlation of the Stream
+
+For one song, we have the vector of stream # for country A and country B. Covariance and correlation is the measure of dependence between the variances
+
+$$
+Cov[X,y] = \frac{\sum(X_i-\bar{X})(Y_j-\bar{Y})}{n-1}
+$$
+
+and Correlation is a standardized measure of Covariance
+
+$$
+Corr[X,Y] = Cov[X,Y]/\sqrt{Var[X]Var[Y]}
+$$
+
+### Autocorrelation Function
+
+Given by CCF (cross correlation function) and acf (auto-correlation function). The CCF identifies lags of the x-variable that might be useful predictors of $y-t$. The sample CCF is the set of sample correlations between $x_{t+h}$ and $y_t$ for h=0, +-1, +-2, etc. Negative value for h is a correlation between the x variable at a time before t and the y variable at time t. H=-2, then the CCF gives the correlaion between X_{t-2} and y_t. 
+
+* When one or more $x_{t+h}$, with h negative, are predictors of y_t, means that x leads y
+* When one or more $x_{t+h}$, with h positive, are predictors of y_t, then xl ags y. 
+
+$$
+CCF(X_t, T_tn) \\
+ACT(Y_t, T_tn)
+$$
+
+## read this: https://online.stat.psu.edu/stat510/lesson/8/8.2
+
+For GB and PT, the most dominant cross correlations occur at h=-5 to 5. The maximum correlations in this region are positive, indicating that an above average value of GB streams is likely to lead to an above average value of US streams about 1-2 weeks later. 
+```{r}
+## is GB a potential predictor of PT, positibe correlations
+GB = ts(test[6])
+PT = ts(test[5])
+ccf(as.numeric(GB), as.numeric(PT))
+ccfvalues = ccf(as.numeric(GB), as.numeric(PT))
+ccfvalues
+```
+
+
+If you switch, then does PT predict GB, at later lags, but not before, X lags Y.
+```{r}
+### is 
+GB = ts(test[5])
+PT = ts(test[6])
+ccf(as.numeric(GB), as.numeric(PT))
+ccfvalues = ccf(as.numeric(GB), as.numeric(PT))
+ccfvalues
+```
+
+## Covariance
+
+```{r}
+
+```
+
+
+

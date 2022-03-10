@@ -1,4 +1,6 @@
 
+### Ghsot Town Covariance Steps
+
 ## Step 1: GT data over multiple countries, DV = streams
 ### GT data over multiple countries
 charts <- read_tsv('/cloud/project/raw/weekly_ghosttown.tsv')
@@ -16,13 +18,96 @@ test <- charts_total %>%
 test[is.na(test)] = 0
 
 ## Step 2: Cross Covariance Function over time. The covariance for each country X each other country
-### ccf function over time
+### ccf function over time ## symmetric because it is the same variable
 cov(test[,3:6])
 ## Step 2A: heat map: if there is a covariance, strong at a time lag
 ## there is a strong time lag in GB and the US, for instance
 mat<- data.matrix(cov(test[,3:6]))
 nba_heatmap <- heatmap(mat, Rowv=NA, Colv=NA, col = cm.colors(256), 
                        scale="column", margins=c(5,10))
+
+### as a correlation matrix 
+library(reshape)
+cormat <- round(cor(test[,3:6]), 2)
+melted_cormat <- melt(cormat)
+head(melted_cormat)
+library(ggplot2)
+ggplot(data = melted_cormat, aes(x=X1, y=X2, fill=value)) + 
+  geom_tile()
+
+### correlation matrix has redunant information, 
+# so set upper half to NA
+# Get lower triangle of the correlation matrix
+get_lower_tri<-function(cormat){
+  cormat[upper.tri(cormat)] <- NA
+  return(cormat)
+}
+# Get upper triangle of the correlation matrix
+get_upper_tri <- function(cormat){
+  cormat[lower.tri(cormat)]<- NA
+  return(cormat)
+}
+upper_tri <- get_upper_tri(cormat)
+upper_tri
+
+## finished
+# Melt the correlation matrix
+library(reshape2)
+melted_cormat <- melt(upper_tri, na.rm = TRUE)
+# Heatmap
+library(ggplot2)
+ggplot(data = melted_cormat, aes(X2, X1, fill = value))+
+  geom_tile(color = "white")+
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                       midpoint = 0, limit = c(-1,1), space = "Lab", 
+                       name="Pearson\nCorrelation") +
+  theme_minimal()+ 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+                                   size = 12, hjust = 1))+
+  coord_fixed()
+
+### reorder correlation matrix according to thecorrelation coefficient
+reorder_cormat <- function(cormat){
+  # Use correlation between variables as distance
+  dd <- as.dist((1-cormat)/2)
+  hc <- hclust(dd)
+  cormat <-cormat[hc$order, hc$order]
+}
+
+# Reorder the correlation matrix
+cormat <- reorder_cormat(cormat)
+upper_tri <- get_upper_tri(cormat)
+# Melt the correlation matrix
+melted_cormat <- melt(upper_tri, na.rm = TRUE)
+# Create a ggheatmap
+ggheatmap <- ggplot(melted_cormat, aes(X2, X1, fill = value))+
+  geom_tile(color = "white")+
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                       midpoint = 0, limit = c(-1,1), space = "Lab", 
+                       name="Pearson\nCorrelation") +
+  theme_minimal()+ # minimal theme
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+                                   size = 12, hjust = 1))+
+  coord_fixed()
+# Print the heatmap
+print(ggheatmap)
+
+## add correlation coefficients onto it
+
+ggheatmap + 
+  geom_text(aes(X2, X1, label = value), color = "black", size = 4) +
+  theme(
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.border = element_blank(),
+    panel.background = element_blank(),
+    axis.ticks = element_blank(),
+    legend.justification = c(1, 0),
+    legend.position = c(0.6, 0.7),
+    legend.direction = "horizontal")+
+  guides(fill = guide_colorbar(barwidth = 7, barheight = 1,
+                               title.position = "top", title.hjust = 0.5))
 
 ## Step 3: Now that we know that, then modelling will tell us, in concert with the other thing,
 # the conditional effect. 
