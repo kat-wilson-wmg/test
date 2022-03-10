@@ -1,0 +1,218 @@
+---
+title: "Correlation/Covariance Matrices"
+date: "06/23/2014"
+output: pdf_document
+classoption: landscape
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Overview
+
+These are the covariance/correlation matrices for the Ofenbach track HSKT.
+
+## Correlation plots
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width=15, fig.height=12}
+
+library(tidyverse)
+library(reshape)
+charts <- read_tsv('/cloud/project/raw/weekly_offennbach.tsv')
+charts_total <- charts %>%
+  filter(COUNTRY_CODE %in% c("FR", "LU", "LT", "DE", "PL", "BE",
+                             "CH",  "AT", "WW", "RO", "NO", "HU", "SE", "FI")) %>%
+  filter(PRODUCT_TITLE == "Head Shoulders Knees & Toes (feat. Norma Jean Martine)") %>%
+  select(COUNTRY_CODE, TOTAL_STREAMS, DATE_KEY)
+## Step 1A: reshape
+test <- charts_total %>%
+  select(TOTAL_STREAMS, COUNTRY_CODE, DATE_KEY) %>%
+  group_by_at(vars(-TOTAL_STREAMS)) %>%
+  dplyr::mutate(row_id = 1:n()) %>%
+  ungroup() %>%
+  spread(key = COUNTRY_CODE, value = TOTAL_STREAMS)
+test[is.na(test)] = 0
+
+vector <- c(3, 16, 32, 48)
+for (i in 1:length(vector)) {
+  {
+  value <- vector[i]
+  cormat <- round(cor(test[1:value,3:15]), 2)
+  melted_cormat <- melt(cormat)
+  library(ggplot2)
+  get_lower_tri<-function(cormat){
+    cormat[upper.tri(cormat)] <- NA
+    return(cormat)
+  }
+  # Get upper triangle of the correlation matrix
+  get_upper_tri <- function(cormat){
+    cormat[lower.tri(cormat)]<- NA
+    return(cormat)
+  }
+  upper_tri <- get_upper_tri(cormat)
+  
+  library(reshape2)
+  melted_cormat <- melt(upper_tri, na.rm = TRUE)
+  plot_test<- ggplot(data = melted_cormat, aes(Var1, Var2, fill = value))+
+    geom_tile(color = "white")+
+    scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                         midpoint = 0, limit = c(-1,1), space = "Lab", 
+                         name="Pearson\nCorrelation") +
+    theme_minimal()+ 
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+                                     size = 12, hjust = 1))+
+    coord_fixed()
+  # 
+  # ### reorder correlation matrix according to thecorrelation coefficient
+  # reorder_cormat <- function(cormat){
+  #   # Use correlation between variables as distance
+  #   dd <- as.dist((1-cormat)/2)
+  #   hc <- hclust(dd)
+  #   cormat <-cormat[hc$order, hc$order]
+  # }
+  # 
+  # Reorder the correlation matrix
+  # cormat <- reorder_cormat(cormat)
+  upper_tri <- get_upper_tri(cormat)
+  # Melt the correlation matrix
+  melted_cormat <- melt(upper_tri, na.rm = TRUE)
+  # Create a ggheatmap
+  ggheatmap <- ggplot(melted_cormat, aes(Var1, Var2, fill = value))+
+    geom_tile(color = "white")+
+    scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                         midpoint = 0, limit = c(-1,1), space = "Lab", 
+                         name="Pearson\nCorrelation") +
+    theme_minimal()+ # minimal theme
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+                                     size = 12, hjust = 1))+
+    coord_fixed()
+  
+  ## add correlation coefficients onto it
+library(ggpubr)
+plot_1 <- ggheatmap + 
+    geom_text(aes(Var1, Var2, label = value), color = "black", size = 4) +
+    labs(title = paste(value, "weeks out",":", value/4, "months out")) +
+    theme(
+      axis.title.x = element_blank(),
+      axis.title.y = element_blank(),
+      panel.grid.major = element_blank(),
+      panel.border = element_blank(),
+      panel.background = element_blank(),
+      axis.ticks = element_blank(),
+      legend.justification = c(1, 0),
+      legend.position = c(0.9, 0.3),
+      legend.direction = "horizontal")+
+    guides(fill = guide_colorbar(barwidth = 7, barheight = 1,
+                                 title.position = "top", title.hjust = 0.5)) 
+
+assign(paste0("first",i), plot_1)
+}
+
+}
+
+ggarrange(first1, first2, first3, first4)
+
+```
+
+\newpage
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.width=14, fig.height=12}
+
+library(tidyverse)
+library(reshape)
+charts <- read_tsv('/cloud/project/raw/weekly_offennbach.tsv')
+charts_total <- charts %>%
+  filter(COUNTRY_CODE %in% c("FR", "LU", "LT", "DE", "PL", "BE",
+                             "CH",  "AT", "WW", "RO", "NO", "HU", "SE", "FI")) %>%
+  filter(PRODUCT_TITLE == "Head Shoulders Knees & Toes (feat. Norma Jean Martine)") %>%
+  select(COUNTRY_CODE, TOTAL_STREAMS, DATE_KEY)
+## Step 1A: reshape
+test <- charts_total %>%
+  select(TOTAL_STREAMS, COUNTRY_CODE, DATE_KEY) %>%
+  group_by_at(vars(-TOTAL_STREAMS)) %>%
+  dplyr::mutate(row_id = 1:n()) %>%
+  ungroup() %>%
+  spread(key = COUNTRY_CODE, value = TOTAL_STREAMS)
+test[is.na(test)] = 0
+
+vector <- c(64, 80, 96)
+for (i in 1:length(vector)) {
+  {
+  value <- vector[i]
+  cormat <- round(cor(test[1:value,3:15]), 2)
+  melted_cormat <- melt(cormat)
+  library(ggplot2)
+  get_lower_tri<-function(cormat){
+    cormat[upper.tri(cormat)] <- NA
+    return(cormat)
+  }
+  # Get upper triangle of the correlation matrix
+  get_upper_tri <- function(cormat){
+    cormat[lower.tri(cormat)]<- NA
+    return(cormat)
+  }
+  upper_tri <- get_upper_tri(cormat)
+  
+  library(reshape2)
+  melted_cormat <- melt(upper_tri, na.rm = TRUE)
+  plot_test<- ggplot(data = melted_cormat, aes(Var1, Var2, fill = value))+
+    geom_tile(color = "white")+
+    scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                         midpoint = 0, limit = c(-1,1), space = "Lab", 
+                         name="Pearson\nCorrelation") +
+    theme_minimal()+ 
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+                                     size = 12, hjust = 1))+
+    coord_fixed()
+  
+  # ### reorder correlation matrix according to thecorrelation coefficient
+  # reorder_cormat <- function(cormat){
+  #   # Use correlation between variables as distance
+  #   dd <- as.dist((1-cormat)/2)
+  #   hc <- hclust(dd)
+  #   cormat <-cormat[hc$order, hc$order]
+  # }
+  # 
+  # # Reorder the correlation matrix
+  # cormat <- reorder_cormat(cormat)
+  upper_tri <- get_upper_tri(cormat)
+  # Melt the correlation matrix
+  melted_cormat <- melt(upper_tri, na.rm = TRUE)
+  # Create a ggheatmap
+  ggheatmap <- ggplot(melted_cormat, aes(Var1, Var2, fill = value))+
+    geom_tile(color = "white")+
+    scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                         midpoint = 0, limit = c(-1,1), space = "Lab", 
+                         name="Pearson\nCorrelation") +
+    theme_minimal()+ # minimal theme
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+                                     size = 12, hjust = 1))+
+    coord_fixed()
+  
+  ## add correlation coefficients onto it
+library(ggpubr)
+plot_1 <- ggheatmap + 
+    geom_text(aes(Var1, Var2, label = value), color = "black", size = 4) +
+    labs(title = paste(value, "weeks out")) +
+    theme(
+      axis.title.x = element_blank(),
+      axis.title.y = element_blank(),
+      panel.grid.major = element_blank(),
+      panel.border = element_blank(),
+      panel.background = element_blank(),
+      axis.ticks = element_blank(),
+      legend.justification = c(1, 0),
+      legend.position = c(0.9, 0.3),
+      legend.direction = "horizontal")+
+    guides(fill = guide_colorbar(barwidth = 7, barheight = 1,
+                                 title.position = "top", title.hjust = 0.5)) 
+
+assign(paste0("first",i), plot_1)
+}
+
+}
+
+ggarrange(first1, first2, first3)
+
+```

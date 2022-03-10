@@ -12,17 +12,19 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Overview
 
-This is a sample analysis on Ofenbach's HSKT stream count over multiple countries. I focus on Stream Count now because Chart Ranking is too conflated with other factors. I am using this song because we have some apriori knoweldge about it. Since it is a dance song, then it peaks in XYZ countries first. I would like to re-create this with two other songs where we know what the pattern is "supposed to be". Do we have another song that we already know peaks in a certain country first? Do we have a song that we know lags far behind other countries? Doesn't have to be a song. An artist, or a genre? For a specific country, or whole territory would do.
+Sample analysis of Ofenbach's HSKT stream count over multiple countries. DV is Stream Count because Chart Ranking is conflated with other factors. Descriptive analysis revealed a trend in this song (since it is a dance song, then it peaks in East European countries first). 
 
 ## Step 1: Data Overivew
 
-I re-shape data of weekly Ofenbach HSKT streams, so each row is a date. Each column is the weekly streams, by country. Sample of the data frame:
+Re-shape data of weekly Ofenbach HSKT Spotify streams, so each row is a date. Each column is the weekly streams, by country. Sample of the data frame:
 
 ```{r message=FALSE, warning=FALSE}
 library(tidyverse)
-charts <- read_tsv('/cloud/project/raw/weekly_ghosttown.tsv')
+charts <- read_tsv('/cloud/project/raw/weekly_offennbach.tsv')
 charts_total <- charts %>%
-  filter(COUNTRY_CODE %in% c("FR", "US", "GB", "PT")) %>%
+  filter(COUNTRY_CODE %in% c("FR", "LU", "LT", "DE", "PL", "BE",
+                             "CH",  "AT", "WW", "RO", "NO", "HU", "SE", "FI")) %>%
+  filter(PRODUCT_TITLE == "Head Shoulders Knees & Toes (feat. Norma Jean Martine)") %>%
   select(COUNTRY_CODE, TOTAL_STREAMS, DATE_KEY)
 ## Step 1A: reshape
 test <- charts_total %>%
@@ -37,23 +39,42 @@ head(test)
 
 ## Step 2: Pairwise Country Visualizations
 
-For each pair of countries, visualize the arc of stream count. You can see here that PT peaks after 
+For all countries, visualize the pattern of stream count. FR peaks before the rest, as the artist is from France, then Luxembourg, Lithuania, Germany, Poland, Belgium, Switzerland, Austria. Pattern of development across Western Europe and into Eastern Europe, then Scandinavia, before global chart.
 
-```{r message=FALSE, warning=FALSE}
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 
 p <- ggplot(charts_total, aes(x=DATE_KEY, y=as.numeric(TOTAL_STREAMS),
                         col = as.factor(COUNTRY_CODE))) +
   geom_line() + 
+  theme_minimal()+
   xlab("") +
-  scale_x_date(date_labels = "%Y-%m-%d") +
-  labs(title = "Ghost Town Spotify 200 Chart progression") +
-  theme(axis.text.x=element_text(angle=60, hjust=1)) 
+  labs(title = "Ofenbach HSKT Weekly Stream progression") +
+  theme(axis.text.x=element_text(angle=60, hjust=1)) +
+  labs(caption = "Stream count on Spotify \n
+       HSNT hits WW charts (global) in week 16") +
+     scale_x_date(date_labels = "%Y-%m-%d",
+                date_breaks = "month") +
+  ylab("Total Streams")+
+  theme(axis.text.x=element_text(angle=60, hjust=1),
+        axis.title = element_text(size = 18),
+        axis.ticks.x = element_blank(),
+        legend.text = element_text(size = 12),
+        legend.title = element_text(size = 12),
+        axis.ticks.y = element_blank(),
+        strip.text = element_text(size = 18)) +
+  guides(linetype ="none",
+         color = guide_legend("Country"))
 p
+
+```
+
+Next, visualize the pairwise comparisons of each country. Is there a relationship between pairs of countries and their vectors of stream counts over time?
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 
 ## one way
 library(GGally)
-pairdat<- test[,3:6]
-ggpairs(test[,3:6])
+pairdat<- test[,3:15]
 
 ## another way
 lowerFn <- function(data, mapping, method = "lm", ...) {
@@ -63,7 +84,7 @@ lowerFn <- function(data, mapping, method = "lm", ...) {
   p
 }
 
-ggpairs(test[,3:6], lower = list(continuous = wrap(lowerFn, method = "lm")),
+ggpairs(test[,3:15], lower = list(continuous = wrap(lowerFn, method = "lm")),
   diag = list(continuous = wrap("barDiag", colour = "blue")),
   upper = list(continuous = wrap("cor", size = 10))
 )
@@ -71,62 +92,172 @@ ggpairs(test[,3:6], lower = list(continuous = wrap(lowerFn, method = "lm")),
 ```
 
 
-
 ## Step 3: Pairwise Country Covariance and Autocorrelation Charts
 
 ### Covariance/Correlation of the Stream
 
-For one song, we have the vector of stream # for country A and country B. Covariance and correlation is the measure of dependence between the variances
+For one song, we have the vector of streams for country A and country B. Covariance and correlation is the measure of dependence between the respective country variances, given by:
 
 $$
 Cov[X,y] = \frac{\sum(X_i-\bar{X})(Y_j-\bar{Y})}{n-1}
 $$
 
-and Correlation is a standardized measure of Covariance
+and Correlation is a standardized measure of that Covariance, given by:
 
 $$
 Corr[X,Y] = Cov[X,Y]/\sqrt{Var[X]Var[Y]}
 $$
 
-### Autocorrelation Function
+Covariance matrix below. Since covariance is not standardized, this is difficult to interpret.
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+### as a covariance matrix
+library(reshape)
+covmat <- round(cov(test[,3:15]))
+covmat
+```
 
-Given by CCF (cross correlation function) and acf (auto-correlation function). The CCF identifies lags of the x-variable that might be useful predictors of $y-t$. The sample CCF is the set of sample correlations between $x_{t+h}$ and $y_t$ for h=0, +-1, +-2, etc. Negative value for h is a correlation between the x variable at a time before t and the y variable at time t. H=-2, then the CCF gives the correlaion between X_{t-2} and y_t. 
+Correlation matrix is easier to interpret:
 
-* When one or more $x_{t+h}$, with h negative, are predictors of y_t, means that x leads y
-* When one or more $x_{t+h}$, with h positive, are predictors of y_t, then xl ags y. 
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+vector <- c(8,16,32,64)
+for (i in 1:length(vector)) {
+  {
+  value <- vector[i]
+  cormat <- round(cor(test[1:value,3:15]), 2)
+  melted_cormat <- melt(cormat)
+  library(ggplot2)
+  get_lower_tri<-function(cormat){
+    cormat[upper.tri(cormat)] <- NA
+    return(cormat)
+  }
+  # Get upper triangle of the correlation matrix
+  get_upper_tri <- function(cormat){
+    cormat[lower.tri(cormat)]<- NA
+    return(cormat)
+  }
+  upper_tri <- get_upper_tri(cormat)
+  
+  library(reshape2)
+  melted_cormat <- melt(upper_tri, na.rm = TRUE)
+  plot_test<- ggplot(data = melted_cormat, aes(Var1, Var2, fill = value))+
+    geom_tile(color = "white")+
+    scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                         midpoint = 0, limit = c(-1,1), space = "Lab", 
+                         name="Pearson\nCorrelation") +
+    theme_minimal()+ 
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+                                     size = 12, hjust = 1))+
+    coord_fixed()
+  
+  ### reorder correlation matrix according to thecorrelation coefficient
+  reorder_cormat <- function(cormat){
+    # Use correlation between variables as distance
+    dd <- as.dist((1-cormat)/2)
+    hc <- hclust(dd)
+    cormat <-cormat[hc$order, hc$order]
+  }
+  
+  # Reorder the correlation matrix
+  cormat <- reorder_cormat(cormat)
+  upper_tri <- get_upper_tri(cormat)
+  # Melt the correlation matrix
+  melted_cormat <- melt(upper_tri, na.rm = TRUE)
+  # Create a ggheatmap
+  ggheatmap <- ggplot(melted_cormat, aes(Var1, Var2, fill = value))+
+    geom_tile(color = "white")+
+    scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                         midpoint = 0, limit = c(-1,1), space = "Lab", 
+                         name="Pearson\nCorrelation") +
+    theme_minimal()+ # minimal theme
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+                                     size = 12, hjust = 1))+
+    coord_fixed()
+  
+  ## add correlation coefficients onto it
+library(ggpubr)
+plot_1 <- ggheatmap + 
+    geom_text(aes(Var1, Var2, label = value), color = "black", size = 4) +
+    labs(title = paste(i, "weeks out")) +
+    theme(
+      axis.title.x = element_blank(),
+      axis.title.y = element_blank(),
+      panel.grid.major = element_blank(),
+      panel.border = element_blank(),
+      panel.background = element_blank(),
+      axis.ticks = element_blank(),
+      legend.justification = c(1, 0),
+      legend.position = c(0.9, 0.3),
+      legend.direction = "horizontal")+
+    guides(fill = guide_colorbar(barwidth = 7, barheight = 1,
+                                 title.position = "top", title.hjust = 0.5)) 
+
+assign(paste0("first",i), plot_1)
+}
+
+}
+
+ggarrange(first1, first2, first3, first4)
+
+```
+
+## Step 4: Cross-Covariance Function
+
+### Cross-Covariance Function
+The CCF identifies lags of the x-variable (a predictor country at time t) that might be useful predictors of $y_t$ (the predicted country at time t). The sample CCF is the set of sample covariances between $x_{t+h}$ and $y_t$ for lags (or h's) =0, +-1, +-2, etc. Negative value for h is a covariance between the x variable at a time before t and the y variable at time t. When h=-2, then the CCF gives the covariance between $X_{t-2}$, the streams of the predicted country at 2 lags behind time t, and $y_t$, the streams of the predicted country at time t.
 
 $$
-CCF(X_t, T_tn) \\
-ACT(Y_t, T_tn)
+CCF(X_t, Y_t) 
 $$
 
-## read this: https://online.stat.psu.edu/stat510/lesson/8/8.2
 
-For GB and PT, the most dominant cross correlations occur at h=-5 to 5. The maximum correlations in this region are positive, indicating that an above average value of GB streams is likely to lead to an above average value of US streams about 1-2 weeks later. 
-```{r}
-## is GB a potential predictor of PT, positibe correlations
-GB = ts(test[6])
-PT = ts(test[5])
-ccf(as.numeric(GB), as.numeric(PT))
-ccfvalues = ccf(as.numeric(GB), as.numeric(PT))
+We know from visualizations that Romania is going to lag France. Let's confirm it with these CCF plots. The most dominant cross covariances occur at h=-15 to -10. The maximum correlations in this region are positive, indicating that an above average value of FR streams is likely to lead to an above average value of RO streams, and that this will be realized at lag -15 to lag -10. We see negative covariances at future lags, but these would not make sence to interpret, since the structure is not seasonal. Since many $x_{t+h}$, with h negative, are predictors of $y_t$, means that x leads y, or FR leads RO.
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+## is FR a potential predictor of RO, positive correlations at initial lags
+FR = ts(test[8])
+RO = ts(test[14])
+ccfvalues = ccf(as.numeric(FR), as.numeric(RO), main = "CCF: France and Romania",
+                type = "covariance")
+ccfvalues
+
+```
+
+If you switch, then does Romania predict France? When one or more $x_{t+h}$, with h positive, are predictors of $y_t$, then x lags y. Did this one with correlation, just to make more interpretable.
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+class(test$AT)
+## is FR a potential predictor of RO, positive correlations at initial lags
+RO = ts(test[8])
+FR = ts(test[14])
+ccfvalues = ccf(as.numeric(FR), as.numeric(RO), main = "CFF: Romania and France",
+                type = "correlation")
 ccfvalues
 ```
 
+## Step 5: Regression Models
 
-If you switch, then does PT predict GB, at later lags, but not before, X lags Y.
+DE and FR would be predictive of RO, since RO lags, but RO not predictive of FR, since FR leads.
+
 ```{r}
-### is 
-GB = ts(test[5])
-PT = ts(test[6])
-ccf(as.numeric(GB), as.numeric(PT))
-ccfvalues = ccf(as.numeric(GB), as.numeric(PT))
-ccfvalues
+model1 <- lm(RO ~ FR + DE, data = test)
+summary(model1)
+model1 <- lm(FR ~ RO , data = test)
+summary(model1)
 ```
 
-## Covariance
+## Step 6: Autocorrelation Function
 
-```{r}
+### Auto Correlation Function
 
+This models the outcome variable and prior versions of itself
+
+$$
+ACF(Y_t, T_ty)
+$$
+Most of the countries look like this, since there is no seasonality in stream data. Rather, it has an initial spike from popularity peak.
+
+``` {r}
+acf(ts(test[8]), main = "France")
+acf(ts(test[14]), main = "RO")
 ```
 
 
